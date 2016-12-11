@@ -3,11 +3,19 @@ package com.lenovox.newsclient;
 import java.util.ArrayList;
 import java.util.List;
 
+import utils.CacheUtils;
+
 import bean.NewsBean;
 import bean.NewsBean.NewsData;
 import bean.NewsBean.Result;
 
 import com.google.gson.Gson;
+import com.handmark.pulltorefresh.library.PullToRefreshBase;
+import com.handmark.pulltorefresh.library.PullToRefreshBase.OnLastItemVisibleListener;
+import com.handmark.pulltorefresh.library.PullToRefreshBase.OnPullEventListener;
+import com.handmark.pulltorefresh.library.PullToRefreshBase.OnRefreshListener;
+import com.handmark.pulltorefresh.library.PullToRefreshBase.State;
+import com.handmark.pulltorefresh.library.PullToRefreshListView;
 import com.lenovox.newsclient.constans.Constans;
 import com.lidroid.xutils.BitmapUtils;
 import com.lidroid.xutils.HttpUtils;
@@ -23,6 +31,7 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.graphics.Color;
 import android.graphics.AvoidXfermode.Mode;
+import android.text.format.DateUtils;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
@@ -41,7 +50,7 @@ import android.widget.Toast;
 public class TabDetail {
 	public Activity mActivity;
 	public View mRootView;
-	private ListView mListView;
+	private PullToRefreshListView mListView;
 	public String mType;
 	String mUrl;
 	private NewsBean mNewsBean;
@@ -62,7 +71,7 @@ public class TabDetail {
 	public View initView() {
 		// Log.e("eeee", mActivity + "");
 		View view = View.inflate(mActivity, R.layout.tabdetail, null);
-		mListView = (ListView) view.findViewById(R.id.tab_detail_listview);
+		mListView = (PullToRefreshListView) view.findViewById(R.id.tab_detail_listview);
 		// 1.找到activity根部的ViewGroup，类型都为FrameLayout。
 		FrameLayout rootContain = (FrameLayout) view.findViewById(R.id.frame);
 		// 2.初始化控件显示的位置
@@ -76,15 +85,47 @@ public class TabDetail {
 		// 4.将控件加到根节点下
 		rootContain.addView(mPb);
 		// return pb;
+		PullToRefreshListener();
+		//mListView.setRefreshing(true);   ????
+		String label = DateUtils.formatDateTime(mActivity, System.currentTimeMillis(),
+                DateUtils.FORMAT_SHOW_TIME | DateUtils.FORMAT_SHOW_DATE | DateUtils.FORMAT_ABBREV_ALL);
+		mListView.getLoadingLayoutProxy().setReleaseLabel("放手开始加载数据");  
+		mListView.getLoadingLayoutProxy().setLastUpdatedLabel(label);
+		mListView.getLoadingLayoutProxy().setRefreshingLabel("数据加载中......");  
+		mListView.getLoadingLayoutProxy().setPullLabel("数据加载完成!"); 
+		mListView.setOnLastItemVisibleListener(new OnLastItemVisibleListener() {
+
+			@Override
+			public void onLastItemVisible() {
+				 Toast.makeText(mActivity, "已经到底了", Toast.LENGTH_SHORT).show();
+			}
+		});
 		return view;
+	}
+
+	private void PullToRefreshListener() {
+		mListView.setOnRefreshListener(new OnRefreshListener<ListView>() {
+
+			@Override
+			public void onRefresh(PullToRefreshBase<ListView> refreshView) {
+				//Toast.makeText(mActivity, "刷新", 0).show();
+				getDataFromServer();
+			}
+		});
 	}
 
 	public void initData() {
 		mProgressBar = new ProgressBar(mActivity);
 
 		mProgressBar.setVisibility(View.VISIBLE);
+		String cache = CacheUtils.getCache(mUrl, mActivity);
+		if (cache != null) {
+			parseData(cache);
+		} else {
+			getDataFromServer();
+		}
+		
 
-		getDataFromServer();
 	}
 
 	private void getDataFromServer() {
@@ -95,6 +136,8 @@ public class TabDetail {
 			public void onSuccess(ResponseInfo<String> arg0) {
 				// Log.e("dataaaaaaaa", arg0.result);
 				parseData(arg0.result);
+				CacheUtils.setCache(mUrl, arg0.result, mActivity);
+				mListView.onRefreshComplete();
 			}
 
 			@Override
@@ -112,6 +155,7 @@ public class TabDetail {
 		mListView.setAdapter(new adapter());
 		mProgressBar.setVisibility(View.GONE);
 		mPb.setVisibility(View.GONE);
+		// webview浏览新闻
 		loadAfter();
 	}
 
@@ -124,10 +168,10 @@ public class TabDetail {
 
 				MainActivity mainActivity = (com.lenovox.newsclient.MainActivity) mActivity;
 				// 浏览新闻详情
-			//	mainActivity.skip("path", lvData.get(arg2).url);
-				Intent intent=new Intent();
+				// mainActivity.skip("path", lvData.get(arg2).url);
+				Intent intent = new Intent();
 				intent.setClass(mActivity, NewsExploreActivity.class);
-				intent.putExtra("path", mLvData.get(arg2).url);
+				intent.putExtra("path", mLvData.get(arg2-1).url);
 				mainActivity.skip(intent);
 				// 标记已读状态
 				SharedPreferences sharedPreferences = mainActivity

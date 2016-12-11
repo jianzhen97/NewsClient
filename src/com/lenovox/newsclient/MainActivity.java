@@ -20,6 +20,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 
 public class MainActivity extends Activity {
 
@@ -33,6 +34,10 @@ public class MainActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		
+		/**
+		 * LeanCloud 
+		 */
 		AVOSCloud.initialize(this, "8kxkq9LD1wsgsDWAFJrpcSJc-gzGzoHsz",
 				"se6LED5IHLAozGE8r57EKul7");
 		AVAnalytics.trackAppOpened(getIntent());
@@ -41,12 +46,18 @@ public class MainActivity extends Activity {
 		
 		testObject.put("foo", "bar");
 		testObject.saveInBackground();
+		
+		
 		mActivity = MainActivity.this;
 		mViewPager = (ViewPager) findViewById(R.id.newsdetailnews_pager);
 		mPageIndicator = (PageIndicator) findViewById(R.id.indicator);
+		// 新闻类型标题
 		initData();
+		
 		mViewPager.setAdapter(new adapter());
 		mPageIndicator.setViewPager(mViewPager);
+		
+		//新闻类型详情初始化数据
 		mViewList.get(0).initData();
 		mPageIndicator.setOnPageChangeListener(new OnPageChangeListener() {
 
